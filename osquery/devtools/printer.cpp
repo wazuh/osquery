@@ -145,6 +145,21 @@ void jsonPrint(const QueryData& q) {
   printf("\n]\n");
 }
 
+void queryDataToJsonString(const QueryData& q, std::string& result) {
+  result.append("[");
+  for (size_t i = 0; i < q.size(); ++i) {
+    std::string row_string;
+
+    if (serializeRowJSON(q[i], row_string).ok()) {
+      result.append(row_string);
+      if (i < q.size() - 1) {
+        result.append(",");
+      }
+    }
+  }
+  result.append("]");
+}
+
 void computeRowLengths(const Row& r,
                        std::map<std::string, size_t>& lengths,
                        bool use_columns) {

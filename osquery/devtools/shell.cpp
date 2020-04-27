@@ -778,6 +778,17 @@ static void pretty_print_if_needed(struct callback_data* pArg) {
   }
 }
 
+static void make_json_result(struct callback_data* pArg, std::string& result) {
+  if ((pArg != nullptr) && pArg->mode == MODE_Pretty) {
+    
+    osquery::queryDataToJsonString(pArg->prettyPrint->results, result);
+    
+    pArg->prettyPrint->results.clear();
+    pArg->prettyPrint->columns.clear();
+    pArg->prettyPrint->lengths.clear();
+  }
+}
+
 /*
 ** Allocate space and save off current error string.
 */
@@ -929,8 +940,6 @@ static int shell_exec(
     }
   } /* end while */
   dbc->clearAffectedTables();
-
-  pretty_print_if_needed(pArg);
 
   return rc;
 }
@@ -1304,6 +1313,7 @@ static int do_meta_command(char* zLine, struct callback_data* p) {
     memcpy(&data, p, sizeof(data));
     auto query = std::string("SELECT * FROM ") + azArg[1];
     rc = shell_exec(query.c_str(), shell_callback, &data, nullptr);
+    pretty_print_if_needed(&data);
     if (rc != SQLITE_OK) {
       fprintf(stderr, "Error querying table: %s\n", azArg[1]);
     }
@@ -1589,6 +1599,7 @@ static int process_input(struct callback_data* p, FILE* in) {
         p->cnt = 0;
         BEGIN_TIMER;
         rc = shell_exec(zSql, shell_callback, p, &zErrMsg);
+        pretty_print_if_needed(p);
         END_TIMER;
         if ((rc != 0) || zErrMsg != nullptr) {
           char zPrefix[100] = {0};
@@ -1675,6 +1686,7 @@ void tableCompletionFunction(char const* prefix, linenoiseCompletions* lc) {
 int runQuery(struct callback_data* data, const char* query) {
   char* error = nullptr;
   int rc = shell_exec(query, shell_callback, data, &error);
+  pretty_print_if_needed(data);
   if (error != nullptr) {
     fprintf(stderr, "Error: %s\n", error);
     rc = (rc == 0) ? 1 : rc;
@@ -1684,6 +1696,43 @@ int runQuery(struct callback_data* data, const char* query) {
   return rc;
 }
 
+int runQuery(struct callback_data* data, const char* query, std::string& result) {
+  char* error = nullptr;
+  int rc = shell_exec(query, shell_callback, data, &error);
+  
+  if (error != nullptr) {
+    fprintf(stderr, "Error: %s\n", error);
+    rc = (rc == 0) ? 1 : rc;
+  } else if (rc != 0) {
+    fprintf(stderr, "Error: unable to process SQL \"%s\"\n", query);
+  }
+
+  make_json_result(data, result);
+  return rc;
+}
+
+
+int runPack(struct callback_data* data, std::string& result) {
+  int rc = 0;
+
+  // Check every pack for a name matching the requested --pack flag.
+  Config::get().packs([data, &rc, &result](const Pack& pack) {
+    if (pack.getName() != FLAGS_pack) {
+      return;
+    }
+    for (const auto& query : pack.getSchedule()) {
+      rc = runQuery(data, query.second.query.c_str(), result);
+      if (rc != 0) {
+        fprintf(stderr,
+                "Could not execute query %s: %s\n",
+                query.first.c_str(),
+                query.second.query.c_str());
+        return;
+      }
+    }
+  });
+  return rc;
+}
 int runPack(struct callback_data* data) {
   int rc = 0;
 
@@ -1792,7 +1841,50 @@ int launchIntoShell(int argc, char** argv) {
       rc = process_input(&data, stdin);
     }
   }
+  set_table_name(&data, nullptr);
+  sqlite3_free(data.zFreeOnClose);
 
+  if (data.prettyPrint != nullptr) {
+    delete data.prettyPrint;
+  }
+  return rc;
+}
+
+
+
+int executeQuery(const std::string& query, std::string& result) {
+  struct callback_data data {};
+  main_init(&data);
+
+#if defined(SQLITE_ENABLE_WHERETRACE)
+  sqlite3WhereTrace = 0xffffffff;
+#endif
+
+  // Move the attach function method into the osquery SQL implementation.
+  // This allow simple/straightforward control of concurrent DB access.
+  osquery::attachFunctionInternal("shellstatic", shellstaticFunc);
+
+  // SQLite: Make sure we have a valid signal handler early
+  signal(SIGINT, interrupt_handler);
+
+  data.out = stdout;
+
+  // Set modes and settings from CLI flags.
+  data.showHeader = static_cast<int>(FLAGS_header);
+  data.mode = MODE_Pretty;
+
+  sqlite3_snprintf(
+      sizeof(data.separator), data.separator, "%s", FLAGS_separator.c_str());
+  sqlite3_snprintf(
+      sizeof(data.nullvalue), data.nullvalue, "%s", FLAGS_nullvalue.c_str());
+
+  int rc = 0;
+  if (!query.empty()) {
+    rc = runQuery(&data, query.c_str(), result);
+    if (rc != 0) {
+      return rc;
+    }
+  }
   set_table_name(&data, nullptr);
   sqlite3_free(data.zFreeOnClose);
 

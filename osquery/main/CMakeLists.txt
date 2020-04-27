@@ -13,20 +13,27 @@ function(osqueryMainMain)
 endfunction()
 
 function(generateOsqueryMain)
-  set(source_files
-    main.cpp
-  )
-
-  if(DEFINED PLATFORM_POSIX)
-    list(APPEND source_files
-      posix/main.cpp
+if(${SHARED_OUTPUT})
+    set(source_files
+        main_shared.cpp
+    )
+else()
+    set(source_files
+      main.cpp
     )
 
-  elseif(DEFINED PLATFORM_WINDOWS)
-    list(APPEND source_files
-      windows/main.cpp
-    )
-  endif()
+    if(DEFINED PLATFORM_POSIX)
+      list(APPEND source_files
+        posix/main.cpp
+      )
+
+    elseif(DEFINED PLATFORM_WINDOWS)
+      list(APPEND source_files
+        windows/main.cpp
+      )
+    endif()
+endif()
+
 
   add_osquery_library(osquery_main EXCLUDE_FROM_ALL
     ${source_files}

@@ -19,7 +19,7 @@ function(generateOsqueryDispatcher)
     distributed_runner.cpp
     scheduler.cpp
   )
-
+  
   target_link_libraries(osquery_dispatcher PUBLIC
     osquery_cxx_settings
     osquery_core

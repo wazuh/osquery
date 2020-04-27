@@ -34,6 +34,9 @@ function(osqueryMain)
 
   generateOsqueryHeaders()
   generateOsqueryd()
+if(${SHARED_OUTPUT})
+  add_subdirectory("toy_example")
+endif()
 endfunction()
 
 function(generateOsqueryHeaders)
@@ -55,10 +58,19 @@ endfunction()
 function(generateOsqueryd)
   # Upstream uses an empty executable that links to a library with a
   # a main() entry point; try to emulate this.
-  set(source_file "${CMAKE_CURRENT_BINARY_DIR}/empty_osqueryd_target_source_file.cpp")
-  generateBuildTimeSourceFile(${source_file} "extern int main(int argc, char* argv[]);")
+  if(${SHARED_OUTPUT})
+    add_library(osqueryd SHARED 
+    "${CMAKE_SOURCE_DIR}/osquery/osquery_interface.h" 
+    "${CMAKE_SOURCE_DIR}/osquery/osquery_interface.cpp"
+    "${CMAKE_SOURCE_DIR}/osquery/osquery_implementation.h" 
+    "${CMAKE_SOURCE_DIR}/osquery/osquery_implementation.cpp" )
+  else()
+    set(source_file "${CMAKE_CURRENT_BINARY_DIR}/empty_osqueryd_target_source_file.cpp")
+    generateBuildTimeSourceFile(${source_file} "extern int main(int argc, char* argv[]);")
 
-  add_osquery_executable(osqueryd "${source_file}")
+    add_osquery_executable(osqueryd "${source_file}")
+  endif()
+  
   set_target_properties(osqueryd PROPERTIES POSITION_INDEPENDENT_CODE true)
 
   target_link_libraries(osqueryd PRIVATE
@@ -66,17 +78,24 @@ function(generateOsqueryd)
     osquery_main
   )
 
-  set(osquery_ext "")
-  if(PLATFORM_WINDOWS)
-    set(osquery_ext ".exe")
+  if(${SHARED_OUTPUT})
+    if(PLATFORM_WINDOWS)
+      target_compile_definitions(osqueryd PRIVATE WIN_EXPORT)
+    endif()
+  else()
+    set(osquery_ext "")
+    if(PLATFORM_WINDOWS)
+      set(osquery_ext ".exe")
+    endif()
+
+    add_custom_target(create_osqueryi ALL DEPENDS osqueryi${osquery_ext})
+    add_custom_command(OUTPUT osqueryi${osquery_ext}
+      COMMAND "${CMAKE_COMMAND}" -E create_symlink osqueryd${osquery_ext} osqueryi${osquery_ext}
+      WORKING_DIRECTORY "$<TARGET_FILE_DIR:osqueryd>"
+    )
+    add_dependencies(create_osqueryi osqueryd)
   endif()
 
-  add_custom_target(create_osqueryi ALL DEPENDS osqueryi${osquery_ext})
-  add_custom_command(OUTPUT osqueryi${osquery_ext}
-    COMMAND "${CMAKE_COMMAND}" -E create_symlink osqueryd${osquery_ext} osqueryi${osquery_ext}
-    WORKING_DIRECTORY "$<TARGET_FILE_DIR:osqueryd>"
-  )
-  add_dependencies(create_osqueryi osqueryd)
 endfunction()
 
 function(enableOsqueryWEL)

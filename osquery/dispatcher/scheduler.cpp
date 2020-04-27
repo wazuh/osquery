@@ -90,8 +90,8 @@ SQLInternal monitor(const std::string& name, const ScheduledQuery& query) {
     return sql;
   }
 }
-
-Status launchQuery(const std::string& name, const ScheduledQuery& query) {
+typedef void((*result_callback)(const char*));
+Status launchQuery(const std::string& name, const ScheduledQuery& query, const void* callback = nullptr) {
   // Execute the scheduled query and create a named query object.
   VLOG(1) << "Executing scheduled query " << name << ": " << query.query;
   runDecorators(DECORATE_ALWAYS);
@@ -102,6 +102,29 @@ Status launchQuery(const std::string& name, const ScheduledQuery& query) {
                << sql.getStatus().toString();
     return Status::failure("Error executing scheduled query");
   }
+  if(nullptr != callback) {
+    result_callback Notify = reinterpret_cast<result_callback>(callback);
+
+    std::function<std::string()> func = [&sql]() {
+      std::string result;
+      result.append("[");
+      for (size_t i = 0; i < sql.rowsTyped().size(); ++i) {
+        std::string row_string;
+
+        if (serializeRowJSON(sql.rowsTyped()[i], row_string, true).ok()) {
+          result.append(row_string);
+          if (i < sql.rowsTyped().size() - 1) {
+            result.append(",");
+          }
+        }
+      }
+      result.append("]");
+      return result;
+    };
+
+    Notify(func().c_str());
+  }
+  
 
   // Fill in a host identifier fields based on configuration or availability.
   std::string ident = getHostIdentifier();
@@ -174,12 +197,14 @@ void SchedulerRunner::start() {
   auto i = osquery::getUnixTime();
   for (; (timeout_ == 0) || (i <= timeout_); ++i) {
     auto start_time_point = std::chrono::steady_clock::now();
+
+    const auto callback = callback_;
     Config::get().scheduledQueries(
-        ([&i](const std::string& name, const ScheduledQuery& query) {
+        ([&i, callback](const std::string& name, const ScheduledQuery& query) {
           if (query.splayed_interval > 0 && i % query.splayed_interval == 0) {
             TablePlugin::kCacheInterval = query.splayed_interval;
             TablePlugin::kCacheStep = i;
-            const auto status = launchQuery(name, query);
+            const auto status = launchQuery(name, query, callback);
             monitoring::record(
                 (boost::format("scheduler.query.%s.%s.status.%s") %
                  query.pack_name % query.name %
@@ -190,6 +215,7 @@ void SchedulerRunner::start() {
                 true);
           }
         }));
+
     // Configuration decorators run on 60 second intervals only.
     if ((i % 60) == 0) {
       runDecorators(DECORATE_INTERVAL, i);
@@ -230,12 +256,13 @@ std::chrono::milliseconds SchedulerRunner::getCurrentTimeDrift() const
   return time_drift_;
 }
 
-void startScheduler() {
-  startScheduler(static_cast<unsigned long int>(FLAGS_schedule_timeout), 1);
+void startScheduler(void* callback) {
+  startScheduler(static_cast<unsigned long int>(FLAGS_schedule_timeout), 1, callback);
 }
 
-void startScheduler(unsigned long int timeout, size_t interval) {
+void startScheduler(unsigned long int timeout, size_t interval, void* callback) {
   Dispatcher::addService(std::make_shared<SchedulerRunner>(
-      timeout, interval, std::chrono::seconds{FLAGS_schedule_max_drift}));
+      timeout, interval, std::chrono::seconds{FLAGS_schedule_max_drift}, callback));
 }
+
 } // namespace osquery

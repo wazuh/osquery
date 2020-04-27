@@ -42,13 +42,14 @@ DECLARE_bool(disable_events);
  *     return osquery::launchIntoShell(argc, argv);
  *   }
  * @endcode
- *
  * @param argc the number of elements in argv
  * @param argv the command-line flags
- *
  * @return an int which represents the "return code"
  */
 int launchIntoShell(int argc, char** argv);
+
+// TO DO
+int executeQuery(const std::string& query, std::string& result);
 
 /**
  * @brief Pretty print a QueryData object
@@ -73,6 +74,9 @@ void prettyPrint(const QueryData& results,
  * @param q The QueryData object to print
  */
 void jsonPrint(const QueryData& q);
+
+//TO DO
+void queryDataToJsonString(const QueryData& q, std::string& result);
 
 /**
  * @brief Compute a map of metadata about the supplied QueryData object

@@ -4,5 +4,6 @@ project(toy_example)
 
 add_executable(toy_example main.c) 
 
-target_link_libraries(toy_example PUBLIC osqueryd)
+target_link_libraries(toy_example PUBLIC ${OSQUERY_SHARED_LIB})
+
 

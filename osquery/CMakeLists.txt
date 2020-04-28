@@ -34,9 +34,9 @@ function(osqueryMain)
 
   generateOsqueryHeaders()
   generateOsqueryd()
-if(${SHARED_OUTPUT})
-  add_subdirectory("toy_example")
-endif()
+  if(PLATFORM_WINDOWS)
+    add_subdirectory("toy_example")
+  endif()
 endfunction()
 
 function(generateOsqueryHeaders)

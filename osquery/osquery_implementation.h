@@ -14,10 +14,9 @@ class OSQueryImplementation {
   }
   bool Release();
   bool ExecuteQuery(const std::string& query, char** value);
-  bool Initialize(void* callback);
+  bool Initialize(char* argv0, void* callback);
  private:
   std::unique_ptr<osquery::Initializer> m_runner;
-  bool m_initialized;
 
   OSQueryImplementation() = default;
   ~OSQueryImplementation() = default;

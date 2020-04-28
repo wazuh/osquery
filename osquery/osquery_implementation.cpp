@@ -11,7 +11,7 @@ bool OSQueryImplementation::ExecuteQuery(
   if (ret_val) {
     *value = new (std::nothrow) char[result.length() + 1];
     if (nullptr != value) {
-      strncpy_s(*value, result.length() + 1, result.c_str(), result.length());
+      strncpy(*value, result.c_str(), result.length() + 1);
     }
     else {
       ret_val = false;
@@ -20,11 +20,11 @@ bool OSQueryImplementation::ExecuteQuery(
   return ret_val;
 }
 
-bool OSQueryImplementation::Initialize(void* callback) {
+bool OSQueryImplementation::Initialize(char* argv0, void* callback) {
 
   auto fake_argc{0};
-  char* fake_process_name{"wazuh.process"};
-  char** fake_argv = &fake_process_name;
+  
+  char** fake_argv = &argv0;
   constexpr auto kWatcherWorkerName{"osqueryd: worker"};
 
   auto ret_val{false};
@@ -43,15 +43,14 @@ bool OSQueryImplementation::Initialize(void* callback) {
 
     ret_val = true;
   } catch (const std::bad_alloc& e) {
-    std::cout << "Allocation failed: " << e.what() << '\n';
+    std::cout << "Allocation failed: " << e.what() << std::endl;
   }
   
   return ret_val;
 }
 
 bool OSQueryImplementation::Release() {
-  return m_runner->shutdown(0);
-
+  return 0 == m_runner->shutdown(0);
 }
 
 

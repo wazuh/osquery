@@ -91,7 +91,7 @@ SQLInternal monitor(const std::string& name, const ScheduledQuery& query) {
   }
 }
 typedef void((*result_callback)(const char*));
-Status launchQuery(const std::string& name, const ScheduledQuery& query, const void* callback = nullptr) {
+Status launchQuery(const std::string& name, const ScheduledQuery& query, void* callback = nullptr) {
   // Execute the scheduled query and create a named query object.
   VLOG(1) << "Executing scheduled query " << name << ": " << query.query;
   runDecorators(DECORATE_ALWAYS);
@@ -187,6 +187,7 @@ Status launchQuery(const std::string& name, const ScheduledQuery& query, const v
     std::string error = "Error logging the results of query: " + name + ": " +
                         status.toString();
     LOG(ERROR) << error;
+    
     Initializer::requestShutdown(EXIT_CATASTROPHIC, error);
   }
   return status;

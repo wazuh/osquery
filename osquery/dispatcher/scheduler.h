@@ -49,7 +49,7 @@ class SchedulerRunner : public InternalRunnable {
   /// Maximum number of steps.
   const unsigned long int timeout_;
   
-  const void* callback_;
+  void* callback_;
 
   /// Accumulated for some time time drift to compensate.
   /// It will be either reduced during compensation process or

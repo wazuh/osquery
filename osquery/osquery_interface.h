@@ -7,9 +7,12 @@
 #else
 #define EXPORTED __declspec(dllimport)
 #endif
+#elif __GNUC__ >= 4
+#define EXPORTED __attribute__((visibility("default")))
 #else
 #define EXPORTED
 #endif
+
 
 #ifdef __cplusplus
 extern "C" {
@@ -19,7 +22,7 @@ extern "C" {
     EXPORTED int execute_query(const char* query,
                                char** return_values);
 
-    EXPORTED int initialize(void* callback);
+    EXPORTED int initialize(char* argv0, void* callback);
 
     EXPORTED int free_query_results(char** return_values);
 #ifdef __cplusplus

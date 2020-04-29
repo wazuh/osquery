@@ -48,7 +48,16 @@ DECLARE_bool(disable_events);
  */
 int launchIntoShell(int argc, char** argv);
 
-// TO DO
+/**
+ * @brief Execute on demand query
+ *
+ * This is a method which prepare the call to sqlite, to get the data
+ * from tables.
+ *
+ * @param query The SQL query used to get the data osquery backend
+ * @param result The result of the query in JSON Format
+ * @return an int which represents the "return code"
+ */
 int executeQuery(const std::string& query, std::string& result);
 
 /**
@@ -75,7 +84,14 @@ void prettyPrint(const QueryData& results,
  */
 void jsonPrint(const QueryData& q);
 
-//TO DO
+/**
+ * @brief Convert the result data to JSON string
+ *
+ * This is a method convert STL container to String with JSON format
+ *
+ * @param q The STL vector with the result data
+ * @param result The result of the query in JSON Format
+ */
 void queryDataToJsonString(const QueryData& q, std::string& result);
 
 /**
@@ -88,6 +104,7 @@ void queryDataToJsonString(const QueryData& q, std::string& result);
  * @return A map of string to int such that the key represents the "column" in
  * the supplied QueryData and the int represents the length of the longest key
  */
+
 void computeRowLengths(const Row& r,
                        std::map<std::string, size_t>& lengths,
                        bool use_columns = false);

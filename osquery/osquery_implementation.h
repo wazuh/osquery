@@ -17,7 +17,7 @@ class OSQueryImplementation {
   }
   bool Release();
   bool ExecuteQuery(const std::string& query, char** value);
-  bool Initialize(char* argv0, void* callback, void* context);
+  bool Initialize(char* argv0, const InitType init_type, void* callback, void* context);
   bool InitializeSubModule(const EventType event_type, void* callback, const size_t interval);
  private:
   std::unique_ptr<osquery::Initializer> m_runner;

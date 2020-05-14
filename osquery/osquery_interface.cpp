@@ -6,11 +6,11 @@
 extern "C" {
 #endif
 
-int initialize(char* argv0, void* callback, void* context) {
+int initialize(char* argv0, const InitType init_type, void* callback, void* context) {
   auto ret_val{ 0l };
   if (nullptr == callback || 
     nullptr == argv0 ||
-    !OSQueryImplementation::getInstance().Initialize(argv0, callback, context)) {
+    !OSQueryImplementation::getInstance().Initialize(argv0, init_type, callback, context)) {
     std::cout << "Cannot initialize OSQueryImplementation" << std::endl;
     ret_val = -1;
   }

@@ -22,7 +22,7 @@ bool OSQueryImplementation::ExecuteQuery(
   return ret_val;
 }
 
-bool OSQueryImplementation::Initialize(char* argv0, void* callback, void* context) {
+bool OSQueryImplementation::Initialize(char* argv0, const InitType init_type, void* callback, void* context) {
 
   auto fake_argc{0};
   
@@ -35,13 +35,17 @@ bool OSQueryImplementation::Initialize(char* argv0, void* callback, void* contex
     m_runner = std::make_unique<osquery::Initializer>(
       fake_argc, 
       fake_argv, 
-      osquery::ToolType::DAEMON);
+      InitType::DAEMON == init_type ? osquery::ToolType::DAEMON : osquery::ToolType::SHELL_DAEMON);
 
     m_runner->initDaemon();
-    m_runner->initWorkerWatcher(kWatcherWorkerName);
-    m_runner->start();
-
-    osquery::startScheduler(callback, context);
+    
+    if(InitType::DAEMON == init_type) {
+      m_runner->initWorkerWatcher(kWatcherWorkerName);
+      m_runner->start();
+      osquery::startScheduler(callback, context);
+    } else if(InitType::SYNC_QUERIES == init_type) {
+      m_runner->start();
+    }
 
     ret_val = true;
   } catch (const std::bad_alloc& e) {

@@ -20,6 +20,11 @@ typedef enum {
     SUBMODULE_LAST = 2
 }EventType;
 
+typedef enum {
+    SYNC_QUERIES = 0,
+    DAEMON = 1
+}InitType;
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -32,6 +37,7 @@ extern "C" {
  * @brief Initialize OSQuery.
  *
  * @param argv0 File path of the invoker host process.
+ * @param init_type Selector to establish the way to start osquery module
  * @param callback This pointer to function is called when some data
  * is returned from scheduled queries.
  * @param context This pointer is a reference of the context, to sent in callbacks
@@ -39,7 +45,7 @@ extern "C" {
  *
  * @return 0 if the initialization is success.
  */
-    EXPORTED int initialize(char* argv0, void* callback, void* context);
+    EXPORTED int initialize(char* argv0, const InitType init_type, void* callback, void* context);
 
 /**
  * @brief Execute on-demand query.

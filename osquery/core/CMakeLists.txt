@@ -16,6 +16,9 @@ function(osqueryCoreMain)
 endfunction()
 
 function(generateOsqueryCore)
+  if(${SHARED_OUTPUT})
+    add_definitions(-DSHARED_OUTPUT)
+  endif()
   set(source_files
     flags.cpp
     init.cpp

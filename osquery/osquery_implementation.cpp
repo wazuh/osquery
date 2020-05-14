@@ -1,4 +1,6 @@
 #include "osquery_implementation.h"
+#include "osquery_submodule_factory.h"
+#include "osquery_submodule_manager.h"
 #include <iostream>
 
 bool OSQueryImplementation::ExecuteQuery(
@@ -20,7 +22,7 @@ bool OSQueryImplementation::ExecuteQuery(
   return ret_val;
 }
 
-bool OSQueryImplementation::Initialize(char* argv0, void* callback) {
+bool OSQueryImplementation::Initialize(char* argv0, void* callback, void* context) {
 
   auto fake_argc{0};
   
@@ -39,7 +41,7 @@ bool OSQueryImplementation::Initialize(char* argv0, void* callback) {
     m_runner->initWorkerWatcher(kWatcherWorkerName);
     m_runner->start();
 
-    osquery::startScheduler(callback);
+    osquery::startScheduler(callback, context);
 
     ret_val = true;
   } catch (const std::bad_alloc& e) {
@@ -50,7 +52,23 @@ bool OSQueryImplementation::Initialize(char* argv0, void* callback) {
 }
 
 bool OSQueryImplementation::Release() {
+  OSQuerySubModuleManager::getInstance().Release();
   return 0 == m_runner->shutdown(0);
 }
 
+
+bool OSQueryImplementation::InitializeSubModule(
+  const EventType event_type, 
+  void* callback, 
+  const size_t interval)
+{
+  bool ret_val { false };
+
+  auto sub_module_instance = FactorySubModule::Create(event_type, callback, interval);
+  if(SUBMODULE_NONE != sub_module_instance->GetType()) {
+    ret_val = OSQuerySubModuleManager::getInstance().Add(sub_module_instance);
+    osquery::Config::get().addPackPreCreated();
+  }
+  return ret_val;
+}
 

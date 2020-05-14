@@ -49,6 +49,9 @@ struct ScheduledQuery : private only_movable {
    */
   bool blacklisted{false};
 
+  /// Returns the callback
+  void* callback{nullptr};
+
   /// Set of query options.
   std::map<std::string, bool> options;
 

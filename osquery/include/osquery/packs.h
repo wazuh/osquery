@@ -38,6 +38,11 @@ class Pack : private boost::noncopyable {
   Pack(const std::string& name, const rapidjson::Value& obj)
       : Pack(name, "", obj) {}
 
+  Pack(const std::string& name, const std::string& source)
+      : name_(name),
+        source_(source) {}
+
+
   Pack(const std::string& name,
        const std::string& source,
        const rapidjson::Value& obj) {

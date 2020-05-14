@@ -14,6 +14,12 @@
 #endif
 
 
+typedef enum {
+    SUBMODULE_NONE = 0,
+    SUBMODULE_PROCESS = 1,
+    SUBMODULE_LAST = 2
+}EventType;
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -28,10 +34,12 @@ extern "C" {
  * @param argv0 File path of the invoker host process.
  * @param callback This pointer to function is called when some data
  * is returned from scheduled queries.
+ * @param context This pointer is a reference of the context, to sent in callbacks
+
  *
  * @return 0 if the initialization is success.
  */
-    EXPORTED int initialize(char* argv0, void* callback);
+    EXPORTED int initialize(char* argv0, void* callback, void* context);
 
 /**
  * @brief Execute on-demand query.
@@ -53,6 +61,19 @@ extern "C" {
  * @return 0 if the deallocation is success
  */
     EXPORTED int free_query_results(char** return_values);
+
+/**
+ * @brief Initialize and subscribe to events provided by osquery.
+ *
+ * @param event_type qualificator of the event type.
+ * @param callback This pointer to function is called when some data
+ * is returned from events.
+ * @param interval interval in seconds, to query for new events
+ * @return 0 if the sub module is initialized.
+ */
+    EXPORTED int init_event_sub_module(const EventType event_type, void* callback, const unsigned long interval);
+
+    
 #ifdef __cplusplus
     }
 #endif

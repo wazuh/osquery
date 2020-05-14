@@ -153,7 +153,7 @@ void initWorkDirectories() {
     }
   }
 }
-
+#ifndef SHARED_OUTPUT
 void signalHandler(int num) {
   int rc = 0;
 
@@ -165,6 +165,7 @@ void signalHandler(int num) {
 
   Initializer::requestShutdown(rc);
 }
+#endif
 } // namespace
 
 static inline void printUsage(const std::string& binary, ToolType tool) {
@@ -313,10 +314,10 @@ Initializer::Initializer(int& argc,
   if (isDaemon()) {
     initWorkDirectories();
   }
-
+#ifndef SHARED_OUTPUT
   std::signal(SIGTERM, signalHandler);
   std::signal(SIGINT, signalHandler);
-
+#endif
   // If the caller is checking configuration, disable the watchdog/worker.
   if (FLAGS_config_check || FLAGS_database_dump || FLAGS_config_dump) {
     FLAGS_disable_watchdog = true;

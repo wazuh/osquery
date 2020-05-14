@@ -32,6 +32,7 @@
 #include <osquery/utils/conversions/split.h>
 #include <osquery/utils/conversions/tryto.h>
 #include <osquery/utils/system/time.h>
+#include "../osquery_submodule_manager.h"
 
 namespace rj = rapidjson;
 
@@ -339,6 +340,22 @@ Config::Config()
 Config& Config::get() {
   static Config instance;
   return instance;
+}
+
+void Config::addPackPreCreated() {
+  try {
+    RecursiveLock wlock(config_schedule_mutex_);
+    for (uint32_t i = SUBMODULE_NONE ; i < SUBMODULE_LAST; i++)
+    {
+      std::unique_ptr<Pack> pack;
+      if(OSQuerySubModuleManager::getInstance().GetClonePack(static_cast<EventType>(i), pack))
+      {
+        schedule_->add(std::move(pack)); 
+      }
+    }
+  } catch (const std::exception& e) {
+    LOG(WARNING) << "Error adding events pack: " << e.what();
+  }
 }
 
 void Config::addPack(const std::string& name,
@@ -733,6 +750,7 @@ Status Config::updateSource(const std::string& source,
     }
   }
 
+  addPackPreCreated();
   applyParsers(source, doc.doc(), false);
   return Status::success();
 }

@@ -1,9 +1,12 @@
 #pragma once
+#include <memory>
 #include <osquery/core.h>
 #include <osquery/core/watcher.h>
 #include <osquery/devtools/devtools.h>
 #include <osquery/dispatcher/distributed_runner.h>
 #include <osquery/dispatcher/scheduler.h>
+#include <osquery/config/config.h>
+#include "osquery_submodule.h"
 
 class OSQueryImplementation {
  public:
@@ -14,10 +17,11 @@ class OSQueryImplementation {
   }
   bool Release();
   bool ExecuteQuery(const std::string& query, char** value);
-  bool Initialize(char* argv0, void* callback);
+  bool Initialize(char* argv0, void* callback, void* context);
+  bool InitializeSubModule(const EventType event_type, void* callback, const size_t interval);
  private:
   std::unique_ptr<osquery::Initializer> m_runner;
-
+  
   OSQueryImplementation() = default;
   ~OSQueryImplementation() = default;
   OSQueryImplementation(const OSQueryImplementation&) = delete;

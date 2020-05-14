@@ -22,10 +22,13 @@
 #include <osquery/profiler/code_profiler.h>
 #include <osquery/query.h>
 #include <osquery/utils/system/time.h>
+#include <osquery/utils/conversions/castvariant.h>
 
 #include "osquery/dispatcher/scheduler.h"
 #include "osquery/sql/sqlite_util.h"
 #include "plugins/config/parsers/decorators.h"
+#include "../osquery_submodule_manager.h"
+#include <iostream>
 
 namespace osquery {
 
@@ -90,8 +93,8 @@ SQLInternal monitor(const std::string& name, const ScheduledQuery& query) {
     return sql;
   }
 }
-typedef void((*result_callback)(const char*));
-Status launchQuery(const std::string& name, const ScheduledQuery& query, void* callback = nullptr) {
+typedef void((*result_callback)(const char*, void* context));
+Status launchQuery(const std::string& name, const ScheduledQuery& query, void* callback = nullptr, void* context = nullptr) {
   // Execute the scheduled query and create a named query object.
   VLOG(1) << "Executing scheduled query " << name << ": " << query.query;
   runDecorators(DECORATE_ALWAYS);
@@ -104,25 +107,74 @@ Status launchQuery(const std::string& name, const ScheduledQuery& query, void* c
   }
   if(nullptr != callback) {
     result_callback Notify = reinterpret_cast<result_callback>(callback);
+    
+    std::map<std::string, std::pair<std::string, std::string>> key_relationship;
+    if (OSQuerySubModuleManager::getInstance().GetStatusRelations(
+      query.name,
+      key_relationship))
+    {
+      for (const auto& row : sql.rowsTyped()) 
+      {
+        rapidjson::StringBuffer s;
+        rapidjson::Writer<rapidjson::StringBuffer> writer(s);
 
-    std::function<std::string()> func = [&sql]() {
-      std::string result;
-      result.append("[");
-      for (size_t i = 0; i < sql.rowsTyped().size(); ++i) {
-        std::string row_string;
+        std::string row_string_json;
+        std::string event_key;
+        std::string event_key_value;
 
-        if (serializeRowJSON(sql.rowsTyped()[i], row_string, true).ok()) {
-          result.append(row_string);
-          if (i < sql.rowsTyped().size() - 1) {
-            result.append(",");
+        if (OSQuerySubModuleManager::getInstance().GetEventKey(
+            query.name,
+            event_key))
+        {
+          writer.StartObject();
+          for (const auto& field : row) {
+            writer.Key(field.first);
+            const auto value = castVariant(field.second);
+            writer.String(value);
+
+            if(field.first.compare(event_key)==0) {
+              event_key_value = value;
+            }
+              
           }
+
+          for (const auto& value : key_relationship)
+          {
+            writer.Key(value.first);
+            std::cout << "Object name - "<< value.first<< " Table- "<< value.second.first<< " Column - "<< value.second.second << std::endl;
+            auto r0 = SQL::selectAllFrom(value.second.first,
+                                  value.second.second,
+                                  EQUALS,
+                                  event_key_value);
+          
+            writer.StartObject();
+            for (const auto& row : r0) {
+              for (const auto& field : row) {
+                writer.Key(field.first);
+                writer.String(castVariant(field.second));
+              }
+            }
+            writer.EndObject();
+          }
+          
+          writer.EndObject();
+          Notify(s.GetString(), context);
         }
       }
-      result.append("]");
-      return result;
-    };
-
-    Notify(func().c_str());
+    } else {
+      for (const auto& row : sql.rowsTyped()) 
+      {
+        rapidjson::StringBuffer s;
+        rapidjson::Writer<rapidjson::StringBuffer> writer(s);
+        writer.StartObject();
+        for (const auto& field : row) {
+          writer.Key(field.first);
+          writer.String(castVariant(field.second));
+        }
+        writer.EndObject();
+        Notify(s.GetString(), context);
+      }
+    }
   }
   
 
@@ -200,12 +252,17 @@ void SchedulerRunner::start() {
     auto start_time_point = std::chrono::steady_clock::now();
 
     const auto callback = callback_;
+    const auto context = context_;
     Config::get().scheduledQueries(
-        ([&i, callback](const std::string& name, const ScheduledQuery& query) {
+        ([&i, callback, context](const std::string& name, const ScheduledQuery& query) {
           if (query.splayed_interval > 0 && i % query.splayed_interval == 0) {
             TablePlugin::kCacheInterval = query.splayed_interval;
             TablePlugin::kCacheStep = i;
-            const auto status = launchQuery(name, query, callback);
+            const auto status = launchQuery(
+                                          name, 
+                                          query, 
+                                          query.callback ? query.callback : callback,
+                                          context);
             monitoring::record(
                 (boost::format("scheduler.query.%s.%s.status.%s") %
                  query.pack_name % query.name %
@@ -257,13 +314,13 @@ std::chrono::milliseconds SchedulerRunner::getCurrentTimeDrift() const
   return time_drift_;
 }
 
-void startScheduler(void* callback) {
-  startScheduler(static_cast<unsigned long int>(FLAGS_schedule_timeout), 1, callback);
+void startScheduler(void* callback, void* context) {
+  startScheduler(static_cast<unsigned long int>(FLAGS_schedule_timeout), 1, callback, context);
 }
 
-void startScheduler(unsigned long int timeout, size_t interval, void* callback) {
+void startScheduler(unsigned long int timeout, size_t interval, void* callback, void* context) {
   Dispatcher::addService(std::make_shared<SchedulerRunner>(
-      timeout, interval, std::chrono::seconds{FLAGS_schedule_max_drift}, callback));
+      timeout, interval, std::chrono::seconds{FLAGS_schedule_max_drift}, callback, context));
 }
 
 } // namespace osquery

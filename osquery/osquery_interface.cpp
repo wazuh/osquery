@@ -6,11 +6,11 @@
 extern "C" {
 #endif
 
-int initialize(char* argv0, void* callback) {
+int initialize(char* argv0, void* callback, void* context) {
   auto ret_val{ 0l };
   if (nullptr == callback || 
-    nullptr == argv0||
-    !OSQueryImplementation::getInstance().Initialize(argv0, callback)) {
+    nullptr == argv0 ||
+    !OSQueryImplementation::getInstance().Initialize(argv0, callback, context)) {
     std::cout << "Cannot initialize OSQueryImplementation" << std::endl;
     ret_val = -1;
   }
@@ -48,6 +48,19 @@ int free_query_results(char** return_values) {
     ret_val = 0;
   }
   
+  return ret_val;
+}
+
+int init_event_sub_module(
+  const EventType event_type, 
+  void* callback, 
+  const unsigned long interval) {
+  auto ret_val{ 0l };
+  if (nullptr == callback ||
+    !OSQueryImplementation::getInstance().InitializeSubModule(event_type, callback, interval)) {
+    std::cout << "Cannot initialize SubModule" << std::endl;
+    ret_val = -1;
+  }
   return ret_val;
 }
 

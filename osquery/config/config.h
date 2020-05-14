@@ -140,6 +140,11 @@ class Config : private boost::noncopyable {
   /**
    * @brief Add a pack to the osquery schedule
    */
+  void addPackPreCreated();
+  
+  /**
+   * @brief Add a pack to the osquery schedule
+   */
   void addPack(const std::string& name,
                const std::string& source,
                const rapidjson::Value& obj);

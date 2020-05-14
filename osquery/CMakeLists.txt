@@ -59,11 +59,72 @@ function(generateOsqueryd)
   # Upstream uses an empty executable that links to a library with a
   # a main() entry point; try to emulate this.
   if(${SHARED_OUTPUT})
+    add_custom_target(
+      make_libs
+      "${CMAKE_COMMAND}" -E make_directory "${PROJECT_BINARY_DIR}/output/libs"
+      COMMENT "Create '${PROJECT_BINARY_DIR}/output/libs"
+    )
+
+    add_custom_target(
+      make_include
+      "${CMAKE_COMMAND}" -E make_directory "${PROJECT_BINARY_DIR}/output/include"
+      COMMENT "Create '${PROJECT_BINARY_DIR}/output/include"
+    )
+    
     add_library(osqueryd SHARED 
-    "${CMAKE_SOURCE_DIR}/osquery/osquery_interface.h" 
     "${CMAKE_SOURCE_DIR}/osquery/osquery_interface.cpp"
-    "${CMAKE_SOURCE_DIR}/osquery/osquery_implementation.h" 
-    "${CMAKE_SOURCE_DIR}/osquery/osquery_implementation.cpp" )
+    "${CMAKE_SOURCE_DIR}/osquery/osquery_implementation.cpp"
+    "${CMAKE_SOURCE_DIR}/osquery/osquery_process_submodule.cpp"
+    "${CMAKE_SOURCE_DIR}/osquery/osquery_submodule_manager.cpp"  )
+
+    add_dependencies(osqueryd make_libs make_include)
+    
+    add_custom_command(
+        TARGET osqueryd POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+                ${CMAKE_SOURCE_DIR}/osquery/osquery_interface.h
+                ${PROJECT_BINARY_DIR}/osquery_lib/include/osquery_interface.h
+        DEPENDS ${osqueryd}
+        COMMENT "Create '${PROJECT_BINARY_DIR}/osquery_lib/include/osquery_interface.h"
+    )
+
+    add_custom_command(
+        TARGET osqueryd POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+                $<TARGET_LINKER_FILE:osqueryd>
+                ${PROJECT_BINARY_DIR}/osquery_lib/libs/$<TARGET_LINKER_FILE_NAME:osqueryd>
+        DEPENDS ${osqueryd}
+        COMMENT "Create '${PROJECT_BINARY_DIR}/osquery_lib/libs/$<TARGET_LINKER_FILE_NAME:osqueryd>"
+    )
+
+    if(PLATFORM_WINDOWS)
+      add_custom_command(
+        TARGET osqueryd POST_BUILD
+        COMMAND "${CMAKE_COMMAND}" -E make_directory 
+                ${PROJECT_BINARY_DIR}/osquery_lib/bin
+        DEPENDS ${osqueryd}
+        COMMENT "Create '${PROJECT_BINARY_DIR}/osquery_lib/bin"
+      )
+      add_custom_command(
+        TARGET osqueryd POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+                $<TARGET_LINKER_FILE:osqueryd>
+                ${PROJECT_BINARY_DIR}/osquery_lib/bin/$<TARGET_FILE_NAME:osqueryd>
+        DEPENDS ${osqueryd}
+        COMMENT "Create '${PROJECT_BINARY_DIR}/osquery_lib/bin/$<TARGET_FILE_NAME:osqueryd>"
+      ) 
+    endif()
+    
+    add_custom_command(
+      TARGET osqueryd POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E tar "cfvz" 
+              "${PROJECT_BINARY_DIR}/${OUTPUT_PACKAGE_NAME}.tar.gz" 
+              "osquery_lib/*"
+      WORKING_DIRECTORY "${PROJECT_BINARY_DIR}/"
+      DEPENDS ${osqueryd}
+      COMMENT "Create '${PROJECT_BINARY_DIR}/${OUTPUT_PACKAGE_NAME}.tar.gz"
+    )
+    
   else()
     set(source_file "${CMAKE_CURRENT_BINARY_DIR}/empty_osqueryd_target_source_file.cpp")
     generateBuildTimeSourceFile(${source_file} "extern int main(int argc, char* argv[]);")

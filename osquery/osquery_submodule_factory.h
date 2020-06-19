@@ -8,7 +8,7 @@ public:
         void* callback, 
         const size_t interval)
     {
-        if (SUBMODULE_PROCESS) {
+        if (SUBMODULE_PROCESS == type) {
             std::cout << "submodule created" << std::endl;
             return std::make_unique<ProcessSubModule>(callback, interval);
         }

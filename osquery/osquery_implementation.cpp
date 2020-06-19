@@ -1,25 +1,14 @@
 #include "osquery_implementation.h"
 #include "osquery_submodule_factory.h"
 #include "osquery_submodule_manager.h"
+#include "osquery_interface.h"
 #include <iostream>
 
 bool OSQueryImplementation::ExecuteQuery(
   const std::string& query, 
-  char** value) {
+  std::string& value) {
 
-  std::string result;
-  auto ret_val{ osquery::executeQuery(query, result) ? false : true };
-
-  if (ret_val) {
-    *value = new (std::nothrow) char[result.length() + 1];
-    if (nullptr != value) {
-      strncpy(*value, result.c_str(), result.length() + 1);
-    }
-    else {
-      ret_val = false;
-    }
-  }
-  return ret_val;
+  return osquery::executeQuery(query, value) ? false : true;
 }
 
 bool OSQueryImplementation::Initialize(char* argv0, const InitType init_type, void* callback, void* context) {
@@ -76,3 +65,48 @@ bool OSQueryImplementation::InitializeSubModule(
   return ret_val;
 }
 
+
+bool OSQueryImplementation::GetCreateTableStatement(
+  const std::string& table, 
+  std::string& sql_statement) {
+
+  auto ret_val { false };
+  if (0 == table.compare(ALL_TABLES)) {
+    ret_val = GetAllCreateTableStatement(sql_statement);
+  } else {
+    std::string table_create_statement;
+    ret_val = GetOneTableCreateStatement(table, sql_statement);
+  }
+  return ret_val;
+}
+
+bool OSQueryImplementation::GetAllCreateTableStatement(
+  std::string& sql_statement) {
+
+  bool ret_val { true };
+  std::vector<std::string> table_list;
+
+  if (GetTableList(table_list)) {
+    for (const auto& value : table_list) {
+      if (!GetOneTableCreateStatement(value, sql_statement)) {
+        ret_val = false;
+        break;
+      }
+    }
+  }
+
+  return ret_val;
+}
+
+bool OSQueryImplementation::GetOneTableCreateStatement(
+  const std::string& table, 
+  std::string& table_create_statement) {
+  return osquery::getTableSchema(table, table_create_statement);
+}
+
+
+bool OSQueryImplementation::GetTableList(
+  std::vector<std::string>& table_list) {
+
+  return osquery::getTableList(table_list);
+}

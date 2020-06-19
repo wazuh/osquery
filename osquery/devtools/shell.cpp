@@ -29,6 +29,7 @@
 
 #include <linenoise.h>
 #include <sqlite3.h>
+#include <iostream>
 
 #include <boost/algorithm/string/predicate.hpp>
 
@@ -1892,5 +1893,38 @@ int executeQuery(const std::string& query, std::string& result) {
     delete data.prettyPrint;
   }
   return rc;
+}
+
+bool getTableList(std::vector<std::string>& table_list) {
+  table_list = osquery::RegistryFactory::get().names("table");
+  std::sort(table_list.begin(), table_list.end());
+  return table_list.size() > 0 ? true : false;
+}
+
+bool getTableSchema(
+  const std::string& table, 
+  std::string& table_create_statement) {
+
+  auto ret_val { false };
+  osquery::PluginResponse response;
+  
+  auto status = osquery::Registry::call(
+      "table", 
+      table, 
+      {{"action", "columns"}}, 
+      response);
+
+  if (status.ok()) {
+    auto const aliases = true;
+    auto const is_extension = false;
+
+    table_create_statement.append("CREATE TABLE ");
+    table_create_statement.append(table);
+    table_create_statement.append(osquery::columnDefinition(response, aliases, is_extension));
+    table_create_statement.append(";");
+
+    ret_val = true;
+  }
+  return ret_val;
 }
 } // namespace osquery

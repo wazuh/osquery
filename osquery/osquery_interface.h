@@ -25,13 +25,15 @@ typedef enum {
     DAEMON = 1
 }InitType;
 
+static const char ALL_TABLES[] = "ALL_TABLES";
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 /**
  * @brief Turn off the services provided by the shared library.
  */
-    EXPORTED void teardown(void);
+    EXPORTED void osquery_teardown(void);
 
 /**
  * @brief Initialize OSQuery.
@@ -45,7 +47,7 @@ extern "C" {
  *
  * @return 0 if the initialization is success.
  */
-    EXPORTED int initialize(char* argv0, const InitType init_type, void* callback, void* context);
+    EXPORTED int osquery_initialize(char* argv0, const InitType init_type, void* callback, void* context);
 
 /**
  * @brief Execute on-demand query.
@@ -56,17 +58,17 @@ extern "C" {
  *
  * @return return 0 if the query is correctly executed
  */
-    EXPORTED int execute_query(const char* query,
+    EXPORTED int osquery_execute_query(const char* query,
                                char** return_values);
 
 /**
- * @brief deallocate query executed results.
+ * @brief deallocate osquery data.
  *
- * @param return_values pointer with the result data.
+ * @param return_values pointer with the osquery data.
  *
  * @return 0 if the deallocation is success
  */
-    EXPORTED int free_query_results(char** return_values);
+    EXPORTED int osquery_free_results(char** return_values);
 
 /**
  * @brief Initialize and subscribe to events provided by osquery.
@@ -77,7 +79,17 @@ extern "C" {
  * @param interval interval in seconds, to query for new events
  * @return 0 if the sub module is initialized.
  */
-    EXPORTED int init_event_sub_module(const EventType event_type, void* callback, const unsigned long interval);
+    EXPORTED int osquery_init_event_sub_module(const EventType event_type, void* callback, const unsigned long interval);
+
+/**
+ * @brief Initialize and subscribe to events provided by osquery.
+ *
+ * @param query qualificator of the event type.
+ * @param callback This pointer to function is called when some data
+ * is returned from events.
+ * @return 0 if the create table statement i returned.
+ */
+    EXPORTED int osquery_get_table_create_statement(const char* table, char** sql_statement);
 
     
 #ifdef __cplusplus

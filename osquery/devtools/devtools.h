@@ -49,6 +49,30 @@ DECLARE_bool(disable_events);
 int launchIntoShell(int argc, char** argv);
 
 /**
+ * @brief Retrieve the table list
+ *
+ * This is a method recover sql create table query.
+ *
+ * @param table Table name of schema to be recovered
+ * @param table_create_statement string query to be appened.
+ * @return if is true, is a success call.
+ * 
+ */
+
+bool getTableSchema(const std::string& table, std::string& table_create_statement);
+
+/**
+ * @brief Retrieve the table list
+ *
+ * This is a method which get the table names.
+ *
+ * @param table_list Container to store all table names
+ * @return if is true, is a success call.
+ * 
+ */
+bool getTableList(std::vector<std::string>& table_list);
+
+/**
  * @brief Execute on demand query
  *
  * This is a method which prepare the call to sqlite, to get the data
